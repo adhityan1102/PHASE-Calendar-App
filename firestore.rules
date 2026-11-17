@@ -1,0 +1,149 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'adhityanknight@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidSection(sec) {
+      return sec is string && sec in ['10A', '10B', '10C', '10D', '10E'];
+    }
+
+    function isValidSubmissionData(data) {
+      return data.keys().hasAll([
+          'uid',
+          'studentName',
+          'studentEmail',
+          'classSection',
+          'marks',
+          'totalMarksSecured',
+          'totalPossibleEntered',
+          'enteredCount',
+          'averagePercent',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid',
+          'studentName',
+          'studentEmail',
+          'classSection',
+          'marks',
+          'totalMarksSecured',
+          'totalPossibleEntered',
+          'enteredCount',
+          'averagePercent',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.uid is string
+        && data.uid == request.auth.uid
+        && isValidId(data.uid)
+        && data.studentName is string
+        && data.studentName.size() >= 1
+        && data.studentName.size() <= 80
+        && data.studentEmail is string
+        && data.studentEmail.size() >= 5
+        && data.studentEmail.size() <= 120
+        && data.studentEmail == request.auth.token.email
+        && isValidSection(data.classSection)
+        && data.marks is map
+        && data.marks.size() <= 80
+        && data.totalMarksSecured is number
+        && data.totalMarksSecured >= 0
+        && data.totalMarksSecured <= 2500
+        && data.totalPossibleEntered is number
+        && data.totalPossibleEntered >= 0
+        && data.totalPossibleEntered <= 2500
+        && data.enteredCount is int
+        && data.enteredCount >= 0
+        && data.enteredCount <= 66
+        && data.averagePercent is number
+        && data.averagePercent >= 0
+        && data.averagePercent <= 100
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && request.auth.uid == adminId;
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /marks_submissions/{submissionId} {
+      // Only the submitting student (own doc) or verified owner/admin can read
+      allow get: if isVerifiedUser() && isValidId(submissionId) && (isOwner(submissionId) || isAdmin());
+      // Strictly owner/admin ONLY can list all students' submissions
+      allow list: if isAdmin();
+
+      // Verified student uploads their own marks record
+      allow create: if isVerifiedUser()
+        && isValidId(submissionId)
+        && isOwner(submissionId)
+        && isValidSubmissionData(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      // Verified student updates their own marks (uid & createdAt remain immutable)
+      allow update: if isVerifiedUser()
+        && isValidId(submissionId)
+        && isValidSubmissionData(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            isOwner(submissionId)
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'studentName',
+              'studentEmail',
+              'classSection',
+              'marks',
+              'totalMarksSecured',
+              'totalPossibleEntered',
+              'enteredCount',
+              'averagePercent',
+              'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isAdmin() && isValidId(submissionId);
+    }
+  }
+}

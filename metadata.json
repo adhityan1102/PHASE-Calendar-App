@@ -1,0 +1,6 @@
+{
+  "name": "CBSE 2027 & Phase 2 Revision Companion",
+  "description": "CBSE Class 10 Board Exam 2027 countdown timer, Sri Chaitanya Phase 2 session schedule, exam blueprints, and in-app remote PDF viewer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

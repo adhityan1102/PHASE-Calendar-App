@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "MarksSubmission": {
+      "title": "MarksSubmission",
+      "description": "Cloud-synced PHASE session marks and student summary submitted by a verified student, readable strictly by the app owner and the submitting student.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Authenticated Firebase UID matching the document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "studentName": {
+          "type": "string",
+          "description": "Student display name chosen on onboarding.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "studentEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Student Gmail address.",
+          "minLength": 5,
+          "maxLength": 120
+        },
+        "classSection": {
+          "type": "string",
+          "description": "Student class section.",
+          "enum": ["10A", "10B", "10C", "10D", "10E"]
+        },
+        "marks": {
+          "type": "object",
+          "description": "Map of PHASE session codes (e.g. MAT-1, SS-3) to numeric scores."
+        },
+        "totalMarksSecured": {
+          "type": "number",
+          "description": "Total marks obtained across entered sessions."
+        },
+        "totalPossibleEntered": {
+          "type": "number",
+          "description": "Maximum possible marks across entered sessions."
+        },
+        "enteredCount": {
+          "type": "number",
+          "description": "Total count of sessions with recorded marks."
+        },
+        "averagePercent": {
+          "type": "number",
+          "description": "Computed percentage average across entered sessions."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of initial submission."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest update."
+        }
+      },
+      "required": [
+        "uid",
+        "studentName",
+        "studentEmail",
+        "classSection",
+        "marks",
+        "totalMarksSecured",
+        "totalPossibleEntered",
+        "enteredCount",
+        "averagePercent",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Server-provisioned admin allowlist entry.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["owner"]
+        }
+      },
+      "required": ["role"]
+    }
+  },
+  "firestore": {
+    "/marks_submissions/{submissionId}": {
+      "schema": {
+        "$ref": "#/entities/MarksSubmission"
+      },
+      "description": "Student cloud marks uploads. Submitting users can write/read only their own document; owner/admin can list and inspect all student submissions."
+    },
+    "/admins/{adminId}": {
+      "schema": {
+        "$ref": "#/entities/AdminRecord"
+      },
+      "description": "Protected admin role lookup documents."
+    }
+  }
+}
